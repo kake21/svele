@@ -4,3 +4,8 @@ build/
 generated/
 .env
 .idea/
+
+# Nix
+result
+result-*
+.direnv/
