@@ -1,0 +1,42 @@
+services:
+    svele:
+        build:
+            context: .
+            target: dev
+        environment:
+            DB_URI: ${DB_URI}
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+        ports:
+            - 5173:5173
+        volumes:
+            - ./src:/usr/src/app/src
+            - ./prisma:/usr/src/app/prisma
+            - ./static:/usr/src/app/static
+            - ./package.json:/usr/src/app/package.json
+            - svelte_kit:/usr/src/app/.svelte-kit
+        depends_on:
+            db:
+                condition: service_healthy
+
+    db:
+        image: postgres:16.0-alpine
+        environment:
+            POSTGRES_DB: ${DB_NAME}
+            POSTGRES_USER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        # 5433 on the host, so svele's database does not collide with projectNext's on 5432.
+        ports:
+            - 5433:5432
+        healthcheck:
+            test: ["CMD-SHELL", "sh -c 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}'"]
+            interval: 0.5s
+            timeout: 0.5s
+            retries: 60
+        volumes:
+            - devdb:/var/lib/postgresql/data
+
+volumes:
+    devdb:
+        driver: local
+    svelte_kit:
+        driver: local

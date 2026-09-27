@@ -1,0 +1,9 @@
+generator svele {
+  provider = "prisma-client"
+  // Generated outside of src, like projectNext does.
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
