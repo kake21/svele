@@ -33,12 +33,43 @@
     }
 }
 
+/*
+ * Page background, ported from projectNext's src/app/layout.module.scss:
+ *
+ *     background:
+ *         linear-gradient(125deg, color-mix(in srgb, $accent-blue 30%, transparent) 0%,
+ *                                 color-mix(in srgb, $surface-base 20%, transparent) 70%),
+ *         $surface-raised;
+ *
+ * projectNext puts this on <body>, which works there because its wrapper is exactly 100dvh - the
+ * gradient is always viewport-sized. svele pages scroll, so on body the gradient would stretch to
+ * the full document height and change angle with content length. Putting it on the canvas with
+ * background-attachment: fixed keeps it viewport-sized however long the page gets.
+ *
+ * svele has no --surface-raised; --bg is the same role (the surface behind the cards).
+ */
 html {
-    background: var(--bg);
+    background:
+        linear-gradient(
+            125deg,
+            color-mix(in srgb, var(--accent-blue) 30%, transparent) 0%,
+            color-mix(in srgb, var(--surface-base) 20%, transparent) 70%
+        ),
+        var(--bg);
+    background-attachment: fixed;
 }
 
 body {
-    background: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
+}
+
+/* The sidebar and its labels animate on every toggle; honour a request not to. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
 }

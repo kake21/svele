@@ -1,6 +1,8 @@
-| `src/app/omegaquotes/*.tsx` + paging context | `src/routes/+page.svelte` + `OmegaquoteRow.svelte` | **rewritten** |
 | SCSS modules | Tailwind v4 | **rewritten** |
-# svele
+| `NavBar/DesktopSideBar.tsx` + `.module.scss` | `lib/DesktopSideBar.svelte` | **ported, optimised** |
+| `NavBar/navDef.ts` (FontAwesome) | `lib/nav/navDef.ts` (lucide-svelte) | **ported** |
+| `layout.module.scss` gradient | `app.css` on the canvas | **ported** |
+# Svele
 
 mini SvelteKit port of projectNext
 
@@ -114,6 +116,52 @@ The header logo is a `<span>` whose background is masked by the SVG, rather than
 what lets it take its colour from `bg-(--surface-base)` and flip with the theme; an `<img>` would
 keep the file's own colours.
 
+## The sidebar
+
+Ported from projectNext's `DesktopSideBar.tsx` + `DesktopSideBar.module.scss`, geometry intact —
+64px collapsed (`$nav-height`), 220px expanded, 3rem rows, 2.5rem toggle, hidden below 800px. The
+SCSS variables map cleanly onto Tailwind's scale because `$gap: 0.5rem` and `$rounding: 1rem` are
+exactly `gap-2` and `rounded-2xl`.
+
+Four deliberate differences, all cheaper than the original:
+
+1. **The width transition moved off the grid.** projectNext animates `grid-template-columns` on the
+   page wrapper, reached into from the layout with `:has(.sideBar [data-expanded='true'])`.
+   Animating a grid track relayouts the whole grid every frame, and the `:has()` makes the page
+   layout depend on a descendant's state. Here the aside is a flex item transitioning its own
+   `width` — one element, and the layout never needs to know why.
+2. **Labels fade instead of resizing.** projectNext transitions `max-width` on every label, so an
+   N-item sidebar runs N layout-driven transitions per toggle. Here labels have static layout and
+   are clipped by the aside's `overflow-hidden`; only `opacity` animates, which the compositor
+   handles without touching layout.
+3. **No tooltip component.** The accessible name is already on the link via `aria-label`, so a
+   `title` covers the pointer affordance — one less component and one less DOM subtree per item.
+4. **lucide-svelte instead of FontAwesome.** `navDef.ts` keeps projectNext's data-driven shape, but
+   an icon is a Svelte component imported by name rather than an `IconDefinition` fed through
+   `@fortawesome/react-fontawesome`. Only the icons actually used reach the bundle, and there is no
+   icon runtime in between. Note that lucide-svelte 1.x still ships legacy class components, so
+   `NavItem['icon']` is `ComponentType<SvelteComponent<IconProps>>` rather than Svelte 5's
+   functional `Component`.
+
+Also added: `aria-expanded` on the toggle, `aria-current="page"` on the active item, and a
+`prefers-reduced-motion` block — the sidebar is the only thing in svele that animates.
+
+One structural consequence. projectNext's wrapper is exactly `100dvh` with the content area
+scrolling inside it, which is what keeps the toggle on screen. svele originally scrolled the whole
+document, which pushed the toggle to the bottom of a long page, so `+layout.svelte` now pins the
+shell to `h-dvh` and gives the content column `overflow-y-auto`. Same reason projectNext does it.
+
+The page background gradient comes from `layout.module.scss`:
+
+```
+linear-gradient(125deg, color-mix(in srgb, $accent-blue 30%, transparent) 0%,
+                        color-mix(in srgb, $surface-base 20%, transparent) 70%), $surface-raised
+```
+
+projectNext puts it on `<body>`, which is safe there because the body is always exactly one
+viewport tall. It sits on the canvas here with `background-attachment: fixed` so it stays
+viewport-sized however long a page gets. svele has no `--surface-raised`; `--bg` is the same role.
+
 ## What was ported and what was rewritten
 
 | projectNext | svele | verdict |
@@ -195,6 +243,9 @@ editing those files and nothing else.
 - cursor paging through `/api/quotes` to exhaustion
 - `svelte-check`: 0 errors, 0 warnings
 - light/dark via `prefers-color-scheme`, both palettes resolving from the same tokens
+- sidebar: 64px collapsed / 220px expanded, labels fading 0 -> 1, `aria-expanded` and
+  `aria-current` tracking state, toggle staying on screen on a long page, and the content column
+  as the only scroller
 - **Docker path**: `docker compose up --build` from clean, `npm ci` against the committed lockfile
 - **Nix path**: `nix develop` → `npm ci` → `prisma db push` → seed → `npm run dev` (vite ready in
   634ms natively vs 850ms in the container), plus `nix build` producing a server that SSRs 20
