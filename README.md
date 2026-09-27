@@ -34,9 +34,17 @@ too.
 `nix build` produces the adapter-node production server, and `nix run` starts it:
 
 ```bash
-nix build                                      # ./result/bin/svele
-DB_URI=postgresql://svele:svele@localhost:5433/svele PORT=3000 ./result/bin/svele
+nix build   # ./result/bin/svele
+
+DB_URI=postgresql://svele:svele@localhost:5433/svele \\
+  PASSWORD_ENCRYPTION_KEY=svele-dev-pepper-change-me \\
+  ORIGIN=http://localhost:3000 PORT=3000 \\
+  ./result/bin/svele
 ```
+
+`ORIGIN` is not optional. adapter-node derives the request origin from it, and without it every
+form action - login included - fails its CSRF origin check with a bare 403 and no explanation.
+The dev server does not enforce this, so it only appears once you run the built server.
 
 ### With Docker only
 
@@ -287,3 +295,102 @@ No RSC equivalent was exercised, because omegaquotes does not need one. projectN
 client boundary, `+page.server.ts` load functions are a rethink rather than a translation. That is
 the next thing to prototype if this experiment goes further — pick a domain that actually leans on
 RSC, not one that does not.
+
+## Users and events
+
+The larger port, done in four gated phases. Each phase ends at something demonstrable; the gates
+for phases 0 and 3 are committed as `tests/phase0.ts` and `tests/phase3.ts` and run against the
+real seeded database, because what they check is that the pieces are wired together.
+
+```bash
+npm run test:phase0    # authorizers, sessions, permissions
+npm run test:phase3    # registration, waiting lists, the concurrency case
+```
+
+Seeded logins are in `prisma/seed.ts`. `vegard` and `ada` are administrators; everyone else is an
+ordinary member, which is what makes the authorizer differences visible.
+
+### What the authorizers actually do
+
+The point of the phase 2 gate is that self-edit and admin-edit diverge because the authorizer says
+so, not because the UI hides a button:
+
+| request | anonymous | member | admin |
+| --- | --- | --- | --- |
+| `/users` | 401 | 403 | 200 |
+| `/users/grace` | 401 | 200 own, 403 other | 200 |
+| `/users/grace/settings` | 401 | 200 own, 403 other | 200 |
+| `/events` | 200 | 200 | 200 |
+| `/events/ny` | 403 | 403 | 200 |
+
+The 401/403 split is `AuthResult.status` doing its job: UNAUTHENTICATED means logging in would
+help, UNAUTHORIZED means it would not. That distinction is why the class was worth porting whole.
+
+### Decisions, as implemented
+
+**D1 — no CMS, no images.** `Event.cmsParagraphId` and `Event.coverImageId` are non-nullable in
+projectNext, so events cannot exist without both. They are `descriptionMd` and `coverImageUrl`
+columns here. The cost stands: this port says nothing about whether the CMS moves cleanly.
+
+**D2 — database sessions.** The cookie carries an opaque token, stored hashed; permissions and
+memberships are read per request in `hooks.server.ts`. This deletes the reason `jwtCompression.ts`
+exists and makes revocation real — changing a password ends every other session, in the same
+transaction, which a JWT cannot do.
+
+It also ruled out the plan's own Phase 1. Auth.js only supports its Credentials provider with a
+JWT strategy, which is exactly why projectNext pins `strategy: 'jwt'`. Having chosen database
+sessions, `@auth/sveltekit` was already excluded — the conflict was in the plan, not the
+implementation. Login is a plain form action instead, and works with JavaScript disabled;
+projectNext's is a `'use client'` component calling `signIn()`, so it does not.
+
+**D3 — registration without the side effects.** Dot punishment, notifications and the confirmation
+mail are gone. That is also what kept `defineSubOperation` out of `serviceOperation.ts`, since
+`dotPunishmentOfUser` is the only thing in scope that needs it. The prediction held: the service
+operation core needed no new machinery for this entire port.
+
+### The bug the gate found
+
+projectNext registers by pre-check, insert, re-count — counting registrations with `id <= mine` to
+find your queue position. Under Postgres' default READ COMMITTED that is not enough: concurrent
+transactions cannot see each other's uncommitted rows, so each counts itself as within capacity.
+
+`tests/phase3.ts` fires five simultaneous registrations at a two-place event with no waiting list.
+Before the fix, **four rows were stored**. svele takes a row lock on the Event at the start of the
+transaction, so registrations for one event queue while different events still run in parallel —
+cheaper than SERIALIZABLE, which would abort the losers and need retry logic everywhere.
+
+projectNext has the same bug. The plan named this as the risk worth testing and said svele was a
+good place to test it.
+
+### Deviations worth knowing
+
+- **scrypt, not bcrypt.** The hash-then-encrypt structure is projectNext's; bcrypt is a native
+  module needing node-gyp, which the network-less Nix sandbox makes a pointless fight.
+- **`destroy` archives.** The row is referenced by quotes, registrations and memberships, and
+  archived users are already excluded from the list, from login and from session resolution.
+- **No Luxon.** Every comparison in the event logic is "before now", which is timezone-independent.
+  Only display needs Europe/Oslo, and `Intl` does that with no dependency.
+- **One `GroupType`.** projectNext models six group subtypes as optional one-to-one tables; svele
+  needs groups only as the thing permissions hang off.
+- **No visibility system.** Verified: no authorizer in either domain returns a `prismaWhereFilter`.
+
+### One transport-layer fix
+
+`AnyOperation` was `ServiceOperation<boolean, ...>`, which no transactional operation can satisfy —
+the flag appears in parameter positions, making the two contravariant. Parameterising over it does
+not work either, since it only appears inside conditional types and inference resolves it to the
+default. A union over `true | false` does work, because an operation that does not declare the flag
+gets `boolean`, and `PrismaPossibleTransaction` deliberately does not distribute, making that
+structurally identical to the `false` member.
+
+### Two things only the production build catches
+
+Both were invisible in `npm run dev` and appeared the first time `nix build` ran after Phase 3.
+
+**A client page must not read a Prisma enum as a value.** `eventCanBeViewdByOptions` used
+`Object.values(EventCanView)`, and the event create page imports it — which drags
+`@prisma/client` into the browser bundle. Rollup then fails trying to resolve `webcrypto` against
+`__vite-browser-external`. Deriving the options from a plain record instead keeps the enum
+type-only. Worth watching for generally: `import type` is erased, a value import is not.
+
+**adapter-node needs `ORIGIN`.** Without it, form actions 403 on the CSRF origin check.

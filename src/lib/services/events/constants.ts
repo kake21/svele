@@ -1,16 +1,22 @@
 import { createSelection } from '@/services/createSelection'
-import { EventCanView } from '../../../../generated/prisma/client.js'
-import type { Event } from '../../../../generated/prisma/client.js'
+import type { Event, EventCanView } from '../../../../generated/prisma/client.js'
 
 export const eventCanBeViewdBy = {
     ALL: { label: 'Alle' },
     CAN_REGISTER: { label: 'Alle som kan melde seg på' },
 } satisfies Record<EventCanView, { label: string }>
 
-export const eventCanBeViewdByOptions = Object.values(EventCanView).map(option => ({
-    value: option,
-    label: eventCanBeViewdBy[option].label,
-}))
+// Derived from the record above rather than from Object.values(EventCanView).
+//
+// Reading the Prisma enum as a *value* pulls @prisma/client into whatever imports this - and the
+// event create page does. Vite's dev server tolerates it; the production build fails outright
+// trying to bundle node:crypto webcrypto for the browser. The record above is
+// keyed by the enum, so its `satisfies` still fails the build if a variant is added unhandled.
+export const eventCanBeViewdByOptions = (Object.keys(eventCanBeViewdBy) as EventCanView[])
+    .map(option => ({
+        value: option,
+        label: eventCanBeViewdBy[option].label,
+    }))
 
 export const eventFieldsToExpose = [
     'id',
