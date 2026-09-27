@@ -12,6 +12,7 @@
         "db:push": "prisma db push",
         "db:seed": "tsx prisma/seed.ts",
         "test:phase0": "tsx tests/phase0.ts",
+        "test:phase3": "tsx tests/phase3.ts",
         "dev-seed": "prisma generate && prisma db push && tsx prisma/seed.ts && svelte-kit sync && vite dev --host 0.0.0.0",
         "prisma-studio": "prisma studio"
     },

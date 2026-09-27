@@ -48,7 +48,7 @@ const people = [
     ['peter', 'Peter', 'Deutsch'], ['linus', 'Linus', 'Torvalds'], ['bjarne', 'Bjarne', 'Stroustrup'],
 ] as const
 
-async function main() {
+async function seedUsers() {
     if (await prisma.user.count() > 0) {
         console.log('[seed] users already present, skipping.')
         return
@@ -151,6 +151,89 @@ async function main() {
 
     console.log(`[seed] ${people.length} users (password "${SEED_PASSWORD}"), 2 groups, ${quotes.length} quotes.`)
     console.log('[seed] "vegard" and "ada" are administrators.')
+}
+
+async function seedEvents() {
+    if (await prisma.event.count() > 0) {
+        console.log('[seed] events already present, skipping.')
+        return
+    }
+
+    const seededUsers = await prisma.user.findMany({ select: { id: true } })
+    // --- Events ---------------------------------------------------------------------------
+    const tagData = [
+        { name: 'Bedpres', description: 'Bedriftspresentasjon', colorR: 37, colorG: 99, colorB: 235 },
+        { name: 'Fest', description: 'Sosialt', colorR: 190, colorG: 24, colorB: 93 },
+        { name: 'Faglig', description: 'Kurs og foredrag', colorR: 15, colorG: 118, colorB: 110 },
+    ]
+    const tags = []
+    for (const tag of tagData) {
+        tags.push(await prisma.eventTag.create({ data: tag }))
+    }
+
+    const hour = 60 * 60 * 1000
+    const day = 24 * hour
+    const nowMs = Date.now()
+
+    const eventData = [
+        {
+            name: 'Kickoff for høstsemesteret',
+            location: 'Storsalen',
+            descriptionMd: 'Vi sparker i gang semesteret med mat, quiz og altfor høy musikk.',
+            start: nowMs + 3 * day, hours: 4, places: 3, waitingList: true, tag: 1,
+        },
+        {
+            name: 'Bedriftspresentasjon med Bekk',
+            location: 'A2-104',
+            descriptionMd: 'Bekk kommer innom for å fortelle om hva de driver med.',
+            start: nowMs + 9 * day, hours: 2, places: 60, waitingList: true, tag: 0,
+        },
+        {
+            name: 'Introduksjon til SvelteKit',
+            location: 'Kjelleren',
+            descriptionMd: 'Et kurs om hvordan en porterer en Next-app uten å miste tjenestelaget.',
+            start: nowMs + 16 * day, hours: 3, places: 25, waitingList: false, tag: 2,
+        },
+        {
+            name: 'Juleball',
+            location: 'Rådhuset',
+            descriptionMd: 'Årets høydepunkt. Dresskode: mørk dress.',
+            start: nowMs - 40 * day, hours: 6, places: 120, waitingList: true, tag: 1,
+        },
+        {
+            name: 'Workshop: Prisma i praksis',
+            location: 'A1-101',
+            descriptionMd: 'Vi gikk gjennom relasjoner, migreringer og hvorfor engines er vanskelig på NixOS.',
+            start: nowMs - 12 * day, hours: 2, places: 30, waitingList: false, tag: 2,
+        },
+    ]
+
+    for (const item of eventData) {
+        await prisma.event.create({
+            data: {
+                name: item.name,
+                location: item.location,
+                descriptionMd: item.descriptionMd,
+                eventStart: new Date(item.start),
+                eventEnd: new Date(item.start + item.hours * hour),
+                canBeViewdBy: 'ALL',
+                takesRegistration: true,
+                places: item.places,
+                waitingList: item.waitingList,
+                registrationStart: new Date(nowMs - day),
+                registrationEnd: new Date(item.start),
+                createdById: seededUsers[0].id,
+                eventTagEvents: { create: [{ tagId: tags[item.tag].id }] },
+            },
+        })
+    }
+
+    console.log(`[seed] ${eventData.length} events, ${tags.length} tags.`)
+}
+
+async function main() {
+    await seedUsers()
+    await seedEvents()
 }
 
 main()

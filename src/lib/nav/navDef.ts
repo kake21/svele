@@ -1,4 +1,6 @@
+import Calendar from 'lucide-svelte/icons/calendar'
 import Info from 'lucide-svelte/icons/info'
+import Users from 'lucide-svelte/icons/users'
 import Quote from 'lucide-svelte/icons/quote'
 import type { IconProps } from 'lucide-svelte'
 import type { ComponentType, SvelteComponent } from 'svelte'
@@ -36,6 +38,16 @@ export const navItems: NavItem[] = [
         name: 'Sitater',
         href: '/',
         icon: Quote,
+    },
+    {
+        name: 'Arrangementer',
+        href: '/events',
+        icon: Calendar,
+    },
+    {
+        name: 'Brukere',
+        href: '/users',
+        icon: Users,
     },
     {
         name: 'Om svele',
