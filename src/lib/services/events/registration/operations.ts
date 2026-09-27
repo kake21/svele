@@ -163,6 +163,39 @@ export const eventRegistrationOperations = {
         }),
     }),
 
+    /**
+     * Whether the signed-in user is registered, and where in the queue.
+     *
+     * readMany needs EVENT_REGISTRATION_READ, which ordinary members do not have - so deriving
+     * "am I registered" from that list means a normal user can never see their own state. This
+     * asks only about the caller, so RequireUser is the whole guard.
+     */
+    readOwn: defineOperation({
+        paramsSchema: z.object({ eventId: z.number() }),
+        authorizer: () => eventRegistrationAuth.readOwn.dynamicFields({}),
+        operation: async ({ prisma, params, session }) => {
+            if (!session.user) return null
+
+            const registration = await prisma.eventRegistration.findUnique({
+                where: { eventId_userId: { eventId: params.eventId, userId: session.user.id } },
+                select: { id: true, createdAt: true },
+            })
+            if (!registration) return null
+
+            const [event, ahead] = await Promise.all([
+                prisma.event.findUniqueOrThrow({
+                    where: { id: params.eventId },
+                    select: { places: true },
+                }),
+                prisma.eventRegistration.count({
+                    where: { eventId: params.eventId, id: { lte: registration.id } },
+                }),
+            ])
+
+            return { ...registration, position: ahead, onWaitingList: ahead > event.places }
+        },
+    }),
+
     readMany: defineOperation({
         paramsSchema: z.object({ eventId: z.number() }),
         authorizer: () => eventRegistrationAuth.readMany.dynamicFields({}),

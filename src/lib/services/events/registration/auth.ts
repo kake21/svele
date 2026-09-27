@@ -1,6 +1,7 @@
 import {
     RequirePermission,
     RequirePermissionAndUser,
+    RequireUser,
     RequireUserIdOrPermission,
 } from '@/server/auth/authorizer'
 
@@ -11,6 +12,7 @@ import {
 export const eventRegistrationAuth = {
     create: RequireUserIdOrPermission.staticFields({ permission: 'EVENT_REGISTRATION_CREATE' }),
     createGuest: RequirePermission.staticFields({ permission: 'EVENT_ADMIN' }),
+    readOwn: RequireUser.staticFields({}),
     readMany: RequirePermissionAndUser.staticFields({ permission: 'EVENT_REGISTRATION_READ' }),
     destroy: RequireUserIdOrPermission.staticFields({ permission: 'EVENT_REGISTRATION_DESROY' }),
 } as const

@@ -87,7 +87,7 @@
                 <p class="m-0 text-sm text-(--text-secondary)">
                     <a href="/login" class="text-(--accent-blue)">Logg inn</a> for å melde deg på.
                 </p>
-            {:else if data.isRegistered}
+            {:else if data.own}
                 <form
                     method="POST"
                     action="?/unregister"
@@ -99,6 +99,11 @@
                     <button
                         class="rounded-lg border border-(--border) px-4 py-2 font-semibold text-(--text)"
                     >Meld meg av</button>
+                    {#if data.own?.onWaitingList}
+                        <span class="ml-3 text-sm text-(--text-secondary)">
+                            Du står på venteliste, plass {data.own.position - event.places}.
+                        </span>
+                    {/if}
                 </form>
             {:else}
                 <form

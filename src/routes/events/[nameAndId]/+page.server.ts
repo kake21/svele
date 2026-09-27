@@ -13,21 +13,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         params: { id },
     }, locals))
 
-    // Reading the registration list needs EVENT_REGISTRATION_READ. Not having it is normal, so a
-    // refusal here is an empty list, not a failed page.
-    const registrations = await callOperation(eventRegistrationOperations.readMany, {
-        params: { eventId: id },
-    }, locals)
-
-    const userId = locals.session.user?.id
+    // Reading the whole registration list needs EVENT_REGISTRATION_READ. Not having it is normal,
+    // so a refusal is an absent list rather than a failed page. "Am I registered" is a separate,
+    // self-scoped question - otherwise an ordinary member could never see their own state.
+    const [registrations, own] = await Promise.all([
+        callOperation(eventRegistrationOperations.readMany, { params: { eventId: id } }, locals),
+        callOperation(eventRegistrationOperations.readOwn, { params: { eventId: id } }, locals),
+    ])
 
     return {
         event,
         registrations: registrations.success ? registrations.data : null,
-        isRegistered: registrations.success
-            ? registrations.data.some(registration => registration.user?.id === userId)
-            : null,
-        canRegister: Boolean(userId),
+        own: own.success ? own.data : null,
+        canRegister: Boolean(locals.session.user),
         canAdmin: locals.session.permissions.includes('EVENT_ADMIN'),
     }
 }
