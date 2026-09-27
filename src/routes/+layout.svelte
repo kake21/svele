@@ -3,7 +3,7 @@
     import DesktopSideBar from '$lib/DesktopSideBar.svelte'
     import Header from '$lib/Header.svelte'
 
-    let { children } = $props()
+    let { children, data }: { children: import('svelte').Snippet, data: import('./$types').LayoutData } = $props()
 </script>
 
 <!--
@@ -16,7 +16,7 @@
     on screen on a long page instead of sitting at the bottom of the document.
 -->
 <div class="flex h-dvh flex-col">
-    <Header />
+    <Header user={data.user} />
 
     <div class="flex min-h-0 flex-1">
         <DesktopSideBar />

@@ -1,6 +1,7 @@
-import { error, fail, json } from '@sveltejs/kit'
+import { error, fail, json, redirect } from '@sveltejs/kit'
 import { safeServerCall } from '@/services/actionError'
 import { emptySession } from './auth/session'
+import type { SessionUserFields } from './auth/session'
 import type { RequestEvent, RequestHandler } from '@sveltejs/kit'
 import type { z } from 'zod'
 import type { ActionReturn } from '@/services/actionTypes'
@@ -132,4 +133,19 @@ export function callOperation<
         ...args,
         session: locals.session ?? emptySession,
     }))
+}
+
+/**
+ * For load functions on pages that require a signed-in user.
+ *
+ * projectNext does this inside AuthResult.redirectOnUnauthorized, which reaches out and calls
+ * Next's redirect() from the auth layer. Keeping it out here means AuthResult stays a value and
+ * the route decides what to do about it - which also lets the callback URL come from the request.
+ */
+export function requireUser(event: RequestEvent): SessionUserFields {
+    const user = event.locals.session.user
+    if (!user) {
+        redirect(303, `/login?callbackUrl=${encodeURIComponent(event.url.pathname + event.url.search)}`)
+    }
+    return user
 }
