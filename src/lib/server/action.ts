@@ -26,8 +26,28 @@ import type { ServiceOperation } from './serviceOperation'
  * the route file already knows which of those it has, and passes them explicitly.
  */
 
-type AnyOperation<Return, ParamsSchema extends z.ZodTypeAny | undefined, DataSchema extends z.ZodTypeAny | undefined> =
-    ServiceOperation<boolean, Return, ParamsSchema, DataSchema>
+/**
+ * A union over the transaction flag rather than ServiceOperation<boolean, ...>.
+ *
+ * An operation declaring opensTransaction: true is a ServiceOperation<true, ...>, whose prisma
+ * context and internalCall take the flag in parameter positions - so it is not assignable to
+ * ServiceOperation<boolean, ...>. Parameterising over the flag does not work either: it appears
+ * only inside conditional types, so inference silently resolves it to the default.
+ *
+ * The union does work, because an operation that does not declare the flag gets `boolean`, and
+ * PrismaPossibleTransaction deliberately does not distribute - so ServiceOperation<boolean, ...>
+ * is structurally identical to ServiceOperation<false, ...> and matches that member.
+ *
+ * It surfaced when users.updatePassword became the first transactional operation to reach a form
+ * action.
+ */
+type AnyOperation<
+    Return,
+    ParamsSchema extends z.ZodTypeAny | undefined,
+    DataSchema extends z.ZodTypeAny | undefined,
+> =
+    | ServiceOperation<true, Return, ParamsSchema, DataSchema>
+    | ServiceOperation<false, Return, ParamsSchema, DataSchema>
 
 /**
  * Wraps a service operation as a SvelteKit form action.
