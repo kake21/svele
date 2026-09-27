@@ -1,33 +1,36 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ *
+ * Referenced from components as Tailwind v4's arbitrary-property shorthand -
+ * `bg-(--surface-base)`, `text-(--text-secondary)` - rather than through @theme, so the
+ * class names match the ones the layout was specified in.
+ */
 :root {
-    --bg: #fbf8f3;
-    --surface: #f2ece1;
-    --surface-raised: #ffffff;
-    --border: #e0d7c8;
-    --ink: #221f1c;
-    --muted: #7a7166;
-    --accent: #b4452f;
-    --accent-ink: #f8f3ec;
-    --danger: #a3301c;
+    --bg: #f1f3f6;
+    --surface-base: #ffffff;
+    --surface-sunken: #e8ebf0;
+    --border: #e2e6ec;
+    --text: #171a1f;
+    --text-secondary: #6b7280;
+    --accent-blue: #2563eb;
+    --accent-blue-ink: #ffffff;
+    --danger: #b91c1c;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #171614;
-        --surface: #221f1c;
-        --surface-raised: #26231f;
-        --border: #37322c;
-        --ink: #f0eae0;
-        --muted: #9b9186;
-        --accent: #d4674d;
-        --accent-ink: #1a1512;
-        --danger: #e08472;
+        --bg: #0e1013;
+        --surface-base: #181b21;
+        --surface-sunken: #12151a;
+        --border: #272b33;
+        --text: #e9ebee;
+        --text-secondary: #969ca6;
+        --accent-blue: #4d8dff;
+        --accent-blue-ink: #0e1013;
+        --danger: #f87171;
     }
-}
-
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
 }
 
 html {
@@ -35,26 +38,7 @@ html {
 }
 
 body {
-    margin: 0;
     background: var(--bg);
-    color: var(--ink);
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    line-height: 1.55;
+    color: var(--text);
     -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2 {
-    letter-spacing: -0.02em;
-}
-
-button {
-    font: inherit;
-    cursor: pointer;
-}
-
-input,
-textarea {
-    font: inherit;
-    color: inherit;
 }

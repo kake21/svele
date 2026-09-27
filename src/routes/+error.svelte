@@ -2,18 +2,12 @@
     import { page } from '$app/state'
 </script>
 
-<h1>{page.status}</h1>
-<p>{page.error?.message ?? 'Noe gikk galt'}</p>
-<a href="/">Tilbake til sitatene</a>
-
-<style>
-    h1 {
-        margin-bottom: 0.25rem;
-        font-size: 3rem;
-    }
-
-    p {
-        margin-top: 0;
-        color: var(--muted);
-    }
-</style>
+<div class="m-2 flex flex-1 flex-col gap-2">
+    <div class="rounded-2xl bg-(--surface-base) p-4">
+        <h1 class="text-5xl font-medium">{page.status}</h1>
+        <p class="mt-1 text-(--text-secondary)">{page.error?.message ?? 'Noe gikk galt'}</p>
+        <a class="mt-4 inline-block text-(--accent-blue) hover:underline" href="/">
+            Tilbake til sitatene
+        </a>
+    </div>
+</div>

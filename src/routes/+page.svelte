@@ -68,172 +68,113 @@
     <title>Omega Quotes &middot; svele</title>
 </svelte:head>
 
-<section class="toolbar">
-    <h1>Omega Quotes</h1>
-    {#if data.canCreate}
-        <button class="primary" onclick={() => (formOpen = !formOpen)}>
-            {formOpen ? 'Avbryt' : 'Nytt sitat'}
+<div class="m-2 flex flex-1 flex-col gap-2">
+    <div
+        class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-(--surface-base) p-4 px-3"
+    >
+        <div class="flex items-baseline gap-3">
+            <h1 class="text-2xl font-medium">Omega Quotes</h1>
+            <span class="text-sm text-(--text-secondary)">
+                {quotes.length}{exhausted ? '' : '+'} sitater
+            </span>
+        </div>
+
+        {#if data.canCreate}
+            <button
+                class="rounded-lg bg-(--accent-blue) px-4 py-2 font-semibold text-(--accent-blue-ink)"
+                onclick={() => (formOpen = !formOpen)}
+            >
+                {formOpen ? 'Avbryt' : 'Nytt sitat'}
+            </button>
+        {/if}
+    </div>
+
+    {#if formOpen && data.canCreate}
+        <!--
+            A plain form posting to the `create` action. It works with JavaScript off; use:enhance
+            upgrades it to prepend the created quote in place instead of reloading the page.
+        -->
+        <form
+            bind:this={formElement}
+            method="POST"
+            action="?/create"
+            class="grid gap-3 rounded-2xl bg-(--surface-base) p-4"
+            use:enhance={() => async ({ result }) => {
+                if (result.type === 'success' && (result.data as ActionReturn<Quote>)?.success) {
+                    createdQuotes = [(result.data as { data: Quote }).data, ...createdQuotes]
+                    formErrors = []
+                    formOpen = false
+                    formElement?.reset()
+                    return
+                }
+                if (result.type === 'failure') {
+                    formErrors = errorMessages(result.data)
+                    return
+                }
+                formErrors = ['Ukjent feil']
+            }}
+        >
+            <label class="grid gap-1.5 text-sm font-semibold text-(--text-secondary)">
+                Sitat
+                <textarea
+                    name="quote"
+                    rows="3"
+                    required
+                    placeholder="Det var en gang…"
+                    class="resize-y rounded-lg border border-(--border) bg-(--surface-sunken) px-3 py-2 font-normal text-(--text) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--accent-blue)"
+                ></textarea>
+            </label>
+            <label class="grid gap-1.5 text-sm font-semibold text-(--text-secondary)">
+                Sitert
+                <input
+                    name="author"
+                    type="text"
+                    required
+                    placeholder="Navn"
+                    class="rounded-lg border border-(--border) bg-(--surface-sunken) px-3 py-2 font-normal text-(--text) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--accent-blue)"
+                />
+            </label>
+
+            {#if formErrors.length > 0}
+                <ul class="list-disc pl-5 text-sm text-(--danger)">
+                    {#each formErrors as message (message)}
+                        <li>{message}</li>
+                    {/each}
+                </ul>
+            {/if}
+
+            <button
+                class="justify-self-start rounded-lg bg-(--accent-blue) px-4 py-2 font-semibold text-(--accent-blue-ink)"
+                type="submit"
+            >
+                Legg til
+            </button>
+        </form>
+    {/if}
+
+    <ol class="grid gap-2">
+        {#each quotes as quote (quote.id)}
+            <li><OmegaquoteRow {quote} /></li>
+        {/each}
+    </ol>
+
+    {#if pagingError}
+        <p class="rounded-2xl bg-(--surface-base) p-4 text-sm text-(--danger)" role="alert">
+            {pagingError}
+        </p>
+    {/if}
+
+    {#if exhausted}
+        <p class="rounded-2xl bg-(--surface-base) p-4 text-center text-sm text-(--text-secondary)">
+            Det var alle {quotes.length} sitatene.
+        </p>
+    {:else}
+        <button
+            class="rounded-2xl bg-(--surface-base) p-4 text-(--text) disabled:cursor-progress disabled:opacity-60"
+            onclick={loadMore}
+            disabled={loadingMore}
+        >
+            {loadingMore ? 'Henter…' : 'Hent flere'}
         </button>
     {/if}
-</section>
-
-{#if formOpen && data.canCreate}
-    <!--
-        A plain form posting to the `create` action. It works with JavaScript off; use:enhance
-        upgrades it to prepend the created quote in place instead of reloading the page.
-    -->
-    <form
-        bind:this={formElement}
-        method="POST"
-        action="?/create"
-        use:enhance={() => async ({ result }) => {
-            if (result.type === 'success' && (result.data as ActionReturn<Quote>)?.success) {
-                createdQuotes = [(result.data as { data: Quote }).data, ...createdQuotes]
-                formErrors = []
-                formOpen = false
-                formElement?.reset()
-                return
-            }
-            if (result.type === 'failure') {
-                formErrors = errorMessages(result.data)
-                return
-            }
-            formErrors = ['Ukjent feil']
-        }}
-    >
-        <label>
-            Sitat
-            <textarea name="quote" rows="3" required placeholder="Det var en gang…"></textarea>
-        </label>
-        <label>
-            Sitert
-            <input name="author" type="text" required placeholder="Navn" />
-        </label>
-
-        {#if formErrors.length > 0}
-            <ul class="errors">
-                {#each formErrors as message (message)}
-                    <li>{message}</li>
-                {/each}
-            </ul>
-        {/if}
-
-        <button class="primary" type="submit">Legg til</button>
-    </form>
-{/if}
-
-<ol class="quotes">
-    {#each quotes as quote (quote.id)}
-        <li><OmegaquoteRow {quote} /></li>
-    {/each}
-</ol>
-
-{#if pagingError}
-    <p class="errors" role="alert">{pagingError}</p>
-{/if}
-
-{#if exhausted}
-    <p class="exhausted">Det var alle {quotes.length} sitatene.</p>
-{:else}
-    <button class="more" onclick={loadMore} disabled={loadingMore}>
-        {loadingMore ? 'Henter…' : 'Hent flere'}
-    </button>
-{/if}
-
-<style>
-    .toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    h1 {
-        margin: 0;
-        font-size: 1.85rem;
-    }
-
-    form {
-        display: grid;
-        gap: 0.9rem;
-        margin-bottom: 1.75rem;
-        padding: 1.25rem;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 0.6rem;
-    }
-
-    label {
-        display: grid;
-        gap: 0.35rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--muted);
-    }
-
-    input,
-    textarea {
-        padding: 0.55rem 0.7rem;
-        background: var(--surface-raised);
-        border: 1px solid var(--border);
-        border-radius: 0.4rem;
-        font-weight: 400;
-        resize: vertical;
-    }
-
-    input:focus-visible,
-    textarea:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 1px;
-    }
-
-    .quotes {
-        display: grid;
-        gap: 0.85rem;
-        margin: 0 0 1.5rem;
-        padding: 0;
-        list-style: none;
-    }
-
-    button {
-        padding: 0.5rem 1rem;
-        border-radius: 0.4rem;
-        border: 1px solid var(--border);
-        background: var(--surface-raised);
-        color: var(--ink);
-    }
-
-    button.primary {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: var(--accent-ink);
-        font-weight: 600;
-    }
-
-    button.more {
-        width: 100%;
-    }
-
-    button:disabled {
-        opacity: 0.6;
-        cursor: progress;
-    }
-
-    .errors {
-        margin: 0;
-        padding-left: 1.1rem;
-        color: var(--danger);
-        font-size: 0.9rem;
-    }
-
-    p.errors {
-        padding-left: 0;
-    }
-
-    .exhausted {
-        text-align: center;
-        color: var(--muted);
-        font-size: 0.85rem;
-    }
-</style>
+</div>

@@ -1,6 +1,8 @@
+| `src/app/omegaquotes/*.tsx` + paging context | `src/routes/+page.svelte` + `OmegaquoteRow.svelte` | **rewritten** |
+| SCSS modules | Tailwind v4 | **rewritten** |
 # svele
 
-**sv**elte × v**ev** — a mini projectNext.
+mini SvelteKit port of projectNext
 
 A one-domain SvelteKit port of projectNext, built to answer one question: **does the
 ServiceOperation pattern survive outside Next.js?** It ports `omegaquotes` end to end — service
@@ -83,6 +85,35 @@ Three smaller things the flake encodes:
 The `nix build` closure is ~360MB. That is Prisma rather than packaging: `@prisma/client` 7.x
 declares the entire `prisma` CLI as a runtime dependency, which drags in `effect`, `@electric-sql`
 and `typescript`. Pruning keeps them because the dependency graph genuinely asks for them.
+## Styling
+
+Tailwind v4, via `@tailwindcss/vite` — no `tailwind.config.js`, no PostCSS config. `src/app.css` is
+`@import 'tailwindcss'` plus a `:root` token block and a `prefers-color-scheme: dark` override.
+
+Tokens are referenced through v4's arbitrary-property shorthand — `bg-(--surface-base)`,
+`text-(--text-secondary)` — rather than through `@theme`, so component class names match the ones
+the layout was specified in. No component carries a `<style>` block any more, with one deliberate
+exception: `Header.svelte` keeps a scoped block for the logo's mask declarations, so the
+vendor-prefixed pair does not have to be written twice inline.
+
+Page structure follows a fixed shape:
+
+```svelte
+<div class="m-2 flex flex-1 flex-col gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-(--surface-base) p-4 px-3">
+        <!-- toolbar -->
+    </div>
+    <!-- content -->
+</div>
+```
+
+`flex-1` only works because `+layout.svelte` wraps everything in `min-h-screen flex-col` — without a
+flex column of known height above it, the page root has nothing to grow against.
+
+The header logo is a `<span>` whose background is masked by the SVG, rather than an `<img>`. That is
+what lets it take its colour from `bg-(--surface-base)` and flip with the theme; an `<img>` would
+keep the file's own colours.
+
 ## What was ported and what was rewritten
 
 | projectNext | svele | verdict |
@@ -163,7 +194,7 @@ editing those files and nothing else.
   ported schema (`"Sitatet kan ikke være tomt"`)
 - cursor paging through `/api/quotes` to exhaustion
 - `svelte-check`: 0 errors, 0 warnings
-- light/dark via `prefers-color-scheme`
+- light/dark via `prefers-color-scheme`, both palettes resolving from the same tokens
 - **Docker path**: `docker compose up --build` from clean, `npm ci` against the committed lockfile
 - **Nix path**: `nix develop` → `npm ci` → `prisma db push` → seed → `npm run dev` (vite ready in
   634ms natively vs 850ms in the container), plus `nix build` producing a server that SSRs 20

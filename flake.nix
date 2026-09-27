@@ -71,7 +71,7 @@
 
                     src = self;
 
-                    npmDepsHash = "sha256-E3EcUvzXaYcWFp3lDmANgQS7Viu+LwatJ7g1b+6U1CI=";
+                    npmDepsHash = "sha256-U6baEtWLv7b0HOo+2uq7N2NTb54ZPZFIECMEMYMpcd8=";
 
                     nativeBuildInputs = [ pkgs.prisma-engines ];
 
