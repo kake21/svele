@@ -137,11 +137,25 @@ Four deliberate differences, all cheaper than the original:
 3. **No tooltip component.** The accessible name is already on the link via `aria-label`, so a
    `title` covers the pointer affordance — one less component and one less DOM subtree per item.
 4. **lucide-svelte instead of FontAwesome.** `navDef.ts` keeps projectNext's data-driven shape, but
-   an icon is a Svelte component imported by name rather than an `IconDefinition` fed through
-   `@fortawesome/react-fontawesome`. Only the icons actually used reach the bundle, and there is no
-   icon runtime in between. Note that lucide-svelte 1.x still ships legacy class components, so
-   `NavItem['icon']` is `ComponentType<SvelteComponent<IconProps>>` rather than Svelte 5's
-   functional `Component`.
+   an icon is a Svelte component rather than an `IconDefinition` fed through a renderer. Measured
+   on the same four icons and the same production build:
+
+   | icons | client JS | gzipped | layout chunk |
+   | --- | --- | --- | --- |
+   | lucide-svelte | 146,148 B | 48,257 B | 38,384 B |
+   | FontAwesome | 214,625 B | 70,110 B | 107,268 B |
+
+   FontAwesome costs **+47% raw, +45% gzipped**, and nearly triples the chunk the sidebar lives in.
+   The difference is `@fortawesome/fontawesome-svg-core`: a runtime that ships whether or not you
+   use the registry, DOM watching, layers, transforms and masks it exists to provide. A lucide icon
+   compiles to a Svelte component with inline SVG and needs no runtime at all.
+
+   Icons are imported per-file rather than from the `lucide-svelte` barrel. The production bundle
+   is byte-identical either way - Rollup tree-shakes the barrel cleanly - but the dev server cold
+   starts in 476ms instead of 684ms with fewer modules in the graph.
+
+   Note that lucide-svelte 1.x still ships legacy class components, so `NavItem['icon']` is
+   `ComponentType<SvelteComponent<IconProps>>` rather than Svelte 5's functional `Component`.
 
 Also added: `aria-expanded` on the toggle, `aria-current="page"` on the active item, and a
 `prefers-reduced-motion` block — the sidebar is the only thing in svele that animates.

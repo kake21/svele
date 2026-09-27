@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from '$app/state'
-    import { ChevronLeft, ChevronRight } from 'lucide-svelte'
+    import ChevronLeft from 'lucide-svelte/icons/chevron-left'
+    import ChevronRight from 'lucide-svelte/icons/chevron-right'
     import { navItems } from './nav/navDef'
 
     let expanded = $state(false)
