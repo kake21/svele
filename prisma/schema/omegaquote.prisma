@@ -1,10 +1,13 @@
-// Mirrors projectNext's src/prisma/schema/omegaquote.prisma, minus the userPoster relation.
-// There is no auth in svele yet, so quotes have no poster. When Auth.js lands, add:
-//   userPoster   User @relation(fields: [userPosterId], references: [id])
-//   userPosterId Int
+// Mirrors projectNext's src/prisma/schema/omegaquote.prisma.
+//
+// userPoster was dropped when svele had no users. Now that it does, the relation is back - but
+// nullable rather than required, so the quotes seeded before Phase 0 stay valid.
 model OmegaQuote {
   id        Int      @id @default(autoincrement())
   author    String
   quote     String
   timestamp DateTime @default(now())
+
+  userPoster   User? @relation(fields: [userPosterId], references: [id])
+  userPosterId Int?
 }

@@ -1,0 +1,102 @@
+// Trimmed from projectNext's src/prisma/schema/event.prisma.
+//
+// Decision 1: projectNext's Event has two NON-NULLABLE foreign keys - cmsParagraphId and
+// coverImageId - so no event row can exist without a CMS paragraph and a CMS image behind it.
+// Following those honestly means porting the CMS (articles, sections, paragraphs, edit mode) and
+// the image pipeline (Image, ImageCollection, ProcessedImageFiles, the sharp worker, the store
+// volume), which together are larger than users and events combined.
+//
+// svele replaces both with plain columns. The cost is real and worth stating: this port no longer
+// says anything about whether the CMS ports cleanly to SvelteKit. That is a genuine question -
+// edit mode is exactly where RSC and SvelteKit diverge most - and a better experiment run on its
+// own than smuggled in under events.
+//
+// Also dropped: hostedByCommitee (optional FK into the group subtypes svele does not model),
+// ScreenPage and Booking back-relations, and the legacy company/lead/extraFields columns.
+enum EventCanView {
+  CAN_REGISTER
+  ALL
+}
+
+model Event {
+  id            Int     @id @default(autoincrement())
+  name          String
+  // Stands in for projectNext's required CmsParagraph relation.
+  descriptionMd String  @default("")
+  // Stands in for projectNext's required CmsImage relation.
+  coverImageUrl String?
+  location      String?
+
+  eventStart   DateTime
+  eventEnd     DateTime
+  canBeViewdBy EventCanView @default(ALL)
+
+  createdBy   User? @relation(fields: [createdById], references: [id])
+  createdById Int?
+
+  takesRegistration Boolean  @default(false)
+  places            Int      @default(0)
+  registrationStart DateTime
+  registrationEnd   DateTime
+  waitingList       Boolean  @default(false)
+
+  eventTagEvents     EventTagEvent[]
+  eventRegistrations EventRegistration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EventTagEvent {
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId Int
+  tag     EventTag @relation(fields: [tagId], references: [id])
+  tagId   Int
+
+  @@id([eventId, tagId])
+}
+
+enum SpecialEventTags {
+  COMPANY_PRESENTATION
+}
+
+model EventTag {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique
+  description String            @default("")
+  colorR      Int
+  colorG      Int
+  colorB      Int
+  special     SpecialEventTags? @unique
+
+  eventTagEvents EventTagEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EventRegistration {
+  id        Int             @id @default(autoincrement())
+  event     Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   Int
+  user      User?           @relation(fields: [userId], references: [id])
+  userId    Int?
+  contact   ContactDetails? @relation(fields: [contactId], references: [id])
+  contactId Int?
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, userId])
+}
+
+// A registration made on behalf of someone without an account.
+model ContactDetails {
+  id     Int     @id @default(autoincrement())
+  name   String
+  email  String?
+  mobile String?
+
+  eventRegistrations EventRegistration[]
+}

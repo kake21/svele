@@ -1,6 +1,6 @@
 import { error, fail, json } from '@sveltejs/kit'
 import { safeServerCall } from '@/services/actionError'
-import { sessionFromLocals } from './session'
+import { emptySession } from './auth/session'
 import type { RequestEvent, RequestHandler } from '@sveltejs/kit'
 import type { z } from 'zod'
 import type { ActionReturn } from '@/services/actionTypes'
@@ -56,7 +56,7 @@ export function makeFormAction<
         const result = await safeServerCall(() => serviceOperation<'UNSAFE'>({
             params: getParams?.(event),
             data,
-            session: sessionFromLocals(event.locals),
+            session: event.locals.session ?? emptySession,
         }))
 
         if (!result.success) return fail(result.httpCode, result)
@@ -89,7 +89,7 @@ export function makeEndpoint<
         const result = await safeServerCall(async () => serviceOperation<'UNSAFE'>({
             params: await getParams?.(event),
             data: await getData?.(event),
-            session: sessionFromLocals(event.locals),
+            session: event.locals.session ?? emptySession,
         }))
 
         return json(result, { status: result.success ? 200 : result.httpCode })
@@ -130,6 +130,6 @@ export function callOperation<
 ): Promise<ActionReturn<Return>> {
     return safeServerCall(() => serviceOperation<'UNSAFE'>({
         ...args,
-        session: sessionFromLocals(locals),
+        session: locals.session ?? emptySession,
     }))
 }

@@ -1,0 +1,40 @@
+// Trimmed from projectNext's src/prisma/schema/group.prisma.
+//
+// projectNext models six group subtypes (Class, Committee, InterestGroup, ManualGroup,
+// OmegaMembershipGroup, StudyProgramme) as optional one-to-one tables off an abstract Group,
+// because Prisma has no table inheritance. svele needs groups only as the thing permissions hang
+// off, so Group carries a name directly and GroupType keeps a single value - the enum stays so
+// the shape is recognisable and so adding a subtype later is additive.
+enum GroupType {
+  MANUAL_GROUP
+}
+
+model Group {
+  id        Int       @id @default(autoincrement())
+  groupType GroupType @default(MANUAL_GROUP)
+  name      String
+
+  // projectNext relates this to an OmegaOrder table (the semester a membership belongs to).
+  // svele keeps the number without the table: membership order semantics survive, the extra
+  // model does not.
+  order Int @default(0)
+
+  memberships Membership[]
+  permissions GroupPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId  Int
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  groupId Int
+  admin   Boolean @default(false)
+  active  Boolean @default(true)
+  title   String  @default("Medlem")
+  order   Int     @default(0)
+
+  @@unique([userId, groupId, order])
+}

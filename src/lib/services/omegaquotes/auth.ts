@@ -1,14 +1,14 @@
-import { RequireNothing } from '@/server/authorizer'
+import { RequirePermission, RequireUser } from '@/server/auth/authorizer'
 
 /**
- * projectNext has:
- *   create:   RequirePermissionAndUserId.staticFields({ permission: 'OMEGAQUOTES_WRITE' })
- *   readPage: RequirePermission.staticFields({ permission: 'OMEGAQUOTES_READ' })
+ * Now that svele has users, these are projectNext's real authorizers rather than the
+ * RequireNothing stubs that stood in while there was no session.
  *
- * svele has no login yet, so both are open. The file exists - and the operations still reference it
- * - so that adding auth later is an edit here plus a populated session, and nothing else.
+ * projectNext guards `create` with RequirePermissionAndUserId, because its create takes the poster
+ * as a parameter. svele's create takes the poster from the session instead, so there is no id to
+ * cross-check - RequireUser plus the permission is the same guarantee without the redundant field.
  */
 export const omegaQuotesAuth = {
-    create: RequireNothing.staticFields(),
-    readPage: RequireNothing.staticFields(),
+    create: RequireUser.staticFields({}),
+    readPage: RequirePermission.staticFields({ permission: 'OMEGAQUOTES_READ' }),
 } as const

@@ -44,6 +44,7 @@
                         # sourcing that file.
                         export DB_URI="''${DB_URI:-postgresql://svele:svele@localhost:5433/svele}"
                         export LOG_LEVEL="''${LOG_LEVEL:-info}"
+                        export PASSWORD_ENCRYPTION_KEY="''${PASSWORD_ENCRYPTION_KEY:-svele-dev-pepper-change-me}"
 
                         echo "svele dev shell"
                         echo "  node          $(node --version)"

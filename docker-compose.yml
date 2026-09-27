@@ -6,6 +6,7 @@ services:
         environment:
             DB_URI: ${DB_URI}
             LOG_LEVEL: ${LOG_LEVEL:-info}
+            PASSWORD_ENCRYPTION_KEY: ${PASSWORD_ENCRYPTION_KEY}
         ports:
             - 5173:5173
         volumes:

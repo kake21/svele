@@ -1,0 +1,39 @@
+// projectNext's Permission enum has roughly 150 values across every domain it owns. This is the
+// slice the ported domains actually reference, read out of their auth.ts files.
+enum Permission {
+  // Omega Quotes
+  OMEGAQUOTES_READ
+  OMEGAQUOTES_WRITE
+
+  // Users. These are admin permissions - they govern reading the user list and editing other
+  // people, not a user's ability to edit themselves, which the authorizers handle by identity.
+  USERS_READ
+  USERS_CREATE
+  USERS_UPDATE
+  USERS_DESTROY
+
+  // Groups
+  GROUP_READ
+
+  // Events
+  EVENT_READ
+  EVENT_CREATE
+  EVENT_ADMIN
+  EVENT_REGISTRATION_READ
+  EVENT_REGISTRATION_CREATE
+  // Spelling carried over from projectNext deliberately, so the two stay greppable.
+  EVENT_REGISTRATION_DESROY
+}
+
+model GroupPermission {
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId    Int
+  permission Permission
+
+  @@unique([groupId, permission])
+}
+
+// Permissions every session gets, logged in or not.
+model DefaultPermission {
+  permission Permission @unique
+}

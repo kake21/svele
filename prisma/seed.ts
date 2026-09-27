@@ -1,9 +1,13 @@
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../generated/prisma/client.js'
+import { hashAndEncryptPassword } from '../src/lib/server/auth/password.ts'
 
 const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DB_URI }),
 })
+
+// Development credentials. Every seeded account uses this password.
+const SEED_PASSWORD = 'svele-dev'
 
 const quotes = [
     { author: 'Ada Lovelace', quote: 'That brain of mine is something more than merely mortal.' },
@@ -33,26 +37,124 @@ const quotes = [
     { author: 'Peter Deutsch', quote: 'To iterate is human, to recurse divine.' },
 ]
 
+const people = [
+    ['vegard', 'Vegard', 'Bauge'], ['ada', 'Ada', 'Lovelace'], ['grace', 'Grace', 'Hopper'],
+    ['edsger', 'Edsger', 'Dijkstra'], ['alan', 'Alan', 'Kay'], ['barbara', 'Barbara', 'Liskov'],
+    ['leslie', 'Leslie', 'Lamport'], ['tony', 'Tony', 'Hoare'], ['fred', 'Fred', 'Brooks'],
+    ['margaret', 'Margaret', 'Hamilton'], ['ken', 'Ken', 'Thompson'], ['rob', 'Rob', 'Pike'],
+    ['niklaus', 'Niklaus', 'Wirth'], ['donald', 'Donald', 'Knuth'], ['kent', 'Kent', 'Beck'],
+    ['martin', 'Martin', 'Fowler'], ['joel', 'Joel', 'Spolsky'], ['john', 'John', 'Carmack'],
+    ['butler', 'Butler', 'Lampson'], ['perlis', 'Alan', 'Perlis'], ['bill', 'Bill', 'Joy'],
+    ['peter', 'Peter', 'Deutsch'], ['linus', 'Linus', 'Torvalds'], ['bjarne', 'Bjarne', 'Stroustrup'],
+] as const
+
 async function main() {
-    const existing = await prisma.omegaQuote.count()
-    if (existing > 0) {
-        console.log(`[seed] ${existing} quotes already present, skipping.`)
+    if (await prisma.user.count() > 0) {
+        console.log('[seed] users already present, skipping.')
         return
     }
 
-    // Spread the timestamps out so cursor paging has a meaningful ordering to page through.
-    const now = Date.now()
-    await prisma.omegaQuote.createMany({
-        data: quotes.map((quote, index) => ({
-            ...quote,
-            timestamp: new Date(now - index * 1000 * 60 * 60 * 6),
-        })),
+    // Anonymous visitors can read quotes and see the event list, nothing more.
+    await prisma.defaultPermission.createMany({
+        data: [{ permission: 'OMEGAQUOTES_READ' }, { permission: 'EVENT_READ' }],
+        skipDuplicates: true,
     })
-    console.log(`[seed] inserted ${quotes.length} quotes.`)
+
+    const members = await prisma.group.create({
+        data: {
+            name: 'Medlemmer',
+            order: 1,
+            permissions: {
+                create: [
+                    { permission: 'OMEGAQUOTES_WRITE' },
+                    { permission: 'GROUP_READ' },
+                    { permission: 'EVENT_REGISTRATION_CREATE' },
+                ],
+            },
+        },
+    })
+
+    const admins = await prisma.group.create({
+        data: {
+            name: 'Administratorer',
+            order: 1,
+            permissions: {
+                create: [
+                    { permission: 'USERS_READ' }, { permission: 'USERS_CREATE' },
+                    { permission: 'USERS_UPDATE' }, { permission: 'USERS_DESTROY' },
+                    { permission: 'EVENT_CREATE' }, { permission: 'EVENT_ADMIN' },
+                    { permission: 'EVENT_REGISTRATION_READ' },
+                    { permission: 'EVENT_REGISTRATION_DESROY' },
+                ],
+            },
+        },
+    })
+
+    const passwordHash = await hashAndEncryptPassword(SEED_PASSWORD)
+
+    for (const [index, [username, firstname, lastname]] of people.entries()) {
+        const user = await prisma.user.create({
+            data: {
+                username,
+                email: `${username}@example.test`,
+                firstname,
+                lastname,
+                acceptedTerms: new Date(),
+                bio: index % 3 === 0 ? `${firstname} har vært med siden starten.` : '',
+            },
+        })
+
+        // Credentials relates to User on the composite [userId, username, email], so it cannot be
+        // created inline with those fields spelled out - Prisma fills them from the connected row.
+        // projectNext does the same in its updatePassword upsert.
+        await prisma.credentials.create({
+            data: {
+                user: { connect: { id: user.id } },
+                passwordHash,
+            },
+        })
+
+        await prisma.membership.create({
+            data: { userId: user.id, groupId: members.id, order: 1, active: true },
+        })
+
+        // The first two also administrate, so there is something to test authorizers against.
+        if (index < 2) {
+            await prisma.membership.create({
+                data: { userId: user.id, groupId: admins.id, order: 1, active: true, admin: true },
+            })
+        }
+    }
+
+    const seededUsers = await prisma.user.findMany({ select: { id: true } })
+
+    // Quotes may already exist from a pre-users seed. In that case attach posters to them rather
+    // than inserting a duplicate set.
+    const existingQuotes = await prisma.omegaQuote.findMany({ select: { id: true } })
+
+    if (existingQuotes.length > 0) {
+        await Promise.all(existingQuotes.map((quote, index) => prisma.omegaQuote.update({
+            where: { id: quote.id },
+            data: { userPosterId: seededUsers[index % seededUsers.length].id },
+        })))
+        console.log(`[seed] attached posters to ${existingQuotes.length} existing quotes.`)
+    } else {
+        const now = Date.now()
+        await prisma.omegaQuote.createMany({
+            data: quotes.map((quote, index) => ({
+                ...quote,
+                timestamp: new Date(now - index * 1000 * 60 * 60 * 6),
+                userPosterId: seededUsers[index % seededUsers.length].id,
+            })),
+        })
+    }
+
+    console.log(`[seed] ${people.length} users (password "${SEED_PASSWORD}"), 2 groups, ${quotes.length} quotes.`)
+    console.log('[seed] "vegard" and "ada" are administrators.')
 }
 
 main()
-    .catch((error) => {
+    .catch(error => {
         console.error(error)
         process.exit(1)
     })

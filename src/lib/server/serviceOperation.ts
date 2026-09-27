@@ -3,12 +3,12 @@ import { zfd } from 'zod-form-data'
 import { ParseError, Smorekopp } from '@/services/error'
 import { prisma as globalPrisma } from './prisma'
 import { prismaErrorWrapper } from './prismaCall'
-import { emptySession } from './session'
+import { emptySession } from './auth/session'
 import logger from './logger'
 import type { z } from 'zod'
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client.js'
-import type { AuthorizerDynamicFieldsBound } from './authorizer'
-import type { Session } from './session'
+import type { AuthorizerDynamicFieldsBound } from './auth/authorizer/Authorizer'
+import type { SessionMaybeUser } from './auth/session'
 
 /**
  * A pared-down port of projectNext's src/services/serviceOperation.ts.
@@ -66,7 +66,7 @@ export type PrismaPossibleTransaction<OpensTransaction extends boolean> =
 
 export type ServiceOperationContext<OpensTransaction extends boolean = boolean> = {
     prisma: PrismaPossibleTransaction<OpensTransaction>,
-    session: Session,
+    session: SessionMaybeUser,
     bypassAuth: boolean,
 }
 
@@ -217,7 +217,13 @@ export function defineOperation<
                 const bound = await prismaErrorWrapper(() => authorizer({ ...args, prisma } as never))
                 const authResult = bound.auth(session)
                 if (!authResult.authorized) {
-                    throw new Smorekopp(authResult.status, authResult.getErrorMessage)
+                    // A failed AuthResult can only carry these two statuses. The distinction is
+                    // the one the transport layer turns into 401 vs 403: UNAUTHENTICATED means
+                    // logging in would help, UNAUTHORIZED means it would not.
+                    throw new Smorekopp(
+                        authResult.status === 'UNAUTHENTICATED' ? 'UNAUTHENTICATED' : 'UNAUTHORIZED',
+                        authResult.getErrorMessage
+                    )
                 }
             }
 
