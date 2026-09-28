@@ -35,5 +35,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         groups: groupsResult.success ? groupsResult.data : [],
         pageSize: userPageSize,
         filter: { partOfName, groupId, sortField },
+        title: 'Brukere',
     }
 }

@@ -14,6 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     return {
         tags: unwrapActionReturn(await callOperation(eventTagOperations.readAll, {}, locals)),
+        title: 'Nytt arrangement',
     }
 }
 

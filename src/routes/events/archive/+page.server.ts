@@ -26,5 +26,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         activeTags: tags,
         query: name,
         pageSize: eventPageSize,
+        title: 'Arrangementsarkiv',
     }
 }

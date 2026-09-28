@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     // Already signed in - nothing to do here.
     if (locals.session.user) redirect(303, url.searchParams.get('callbackUrl') ?? '/')
 
-    return { callbackUrl: url.searchParams.get('callbackUrl') ?? '/' }
+    return { callbackUrl: url.searchParams.get('callbackUrl') ?? '/', title: 'Logg inn' }
 }
 
 /**

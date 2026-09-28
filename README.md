@@ -394,3 +394,26 @@ Both were invisible in `npm run dev` and appeared the first time `nix build` ran
 type-only. Worth watching for generally: `import type` is erased, a value import is not.
 
 **adapter-node needs `ORIGIN`.** Without it, form actions 403 on the CSRF origin check.
+
+## The header title
+
+Ported from projectNext's `PageTitleContext` + `PageTitleSetter` + `NavBarTitle` trio, which is
+React context written from a `useEffect`. That has a cost the original absorbs: the server renders
+no title at all, so `NavBarTitle` emits an empty placeholder purely to stop the layout shifting
+during hydration.
+
+svele has two routes to the same place, and the split is deliberate:
+
+1. **`title` returned from a page's `load`.** Available before the layout renders, so it is in the
+   server HTML, correct with JavaScript disabled, and never flashes. Almost every page uses this.
+2. **`<PageTitle title="…" />`** — a context store for a title that depends on something only the
+   client knows. `/users` uses it to append the live row count, which changes as rows page in.
+   It wins over the load value while mounted and releases on unmount.
+
+The ordering is why both exist. During SSR the layout renders `<Header>` before the page's own
+markup, so anything a child sets cannot reach a header that has already been emitted — the same
+constraint React hits, made explicit rather than papered over with a placeholder. Data resolved in
+`load` does not have that problem, so that is the default and the store is the exception.
+
+Omega Quotes moved to `/sitater` to free `/` for a landing page, which reads through the same
+ported operations every other page uses — so what it shows is subject to the same authorizers.

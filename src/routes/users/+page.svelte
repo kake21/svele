@@ -2,6 +2,7 @@
     import { untrack } from 'svelte'
     import { goto } from '$app/navigation'
     import { Search } from 'lucide-svelte'
+    import PageTitle from '$lib/PageTitle.svelte'
     import type { ActionReturn } from '@/services/actionTypes'
     import type { PageData } from './$types'
 
@@ -72,6 +73,13 @@
         reachedEnd = false
     })
 </script>
+
+<!--
+    The load function already supplies "Brukere", which is what the server renders. This overrides
+    it on the client with the live count, which changes as rows page in - the case the static
+    title cannot cover, and the reason the store exists alongside it.
+-->
+<PageTitle title="Brukere · {users.length}{exhausted ? '' : '+'}" />
 
 <svelte:head>
     <title>Brukere · svele</title>

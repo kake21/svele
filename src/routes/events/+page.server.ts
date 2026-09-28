@@ -18,5 +18,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         tags: unwrapActionReturn(tagsAvailable),
         activeTags: tags,
         canCreate: locals.session.permissions.includes('EVENT_CREATE'),
+        title: 'Arrangementer',
     }
 }

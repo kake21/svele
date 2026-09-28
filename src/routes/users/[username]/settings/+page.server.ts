@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         error(403, { message: 'Du har ikke tilgang til å redigere denne brukeren' })
     }
 
-    return { profile, isSelf }
+    return { profile, isSelf, title: `Rediger ${profile.firstname}` }
 }
 
 export const actions = {

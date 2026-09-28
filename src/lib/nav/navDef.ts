@@ -36,7 +36,7 @@ export type NavItem = {
 export const navItems: NavItem[] = [
     {
         name: 'Sitater',
-        href: '/',
+        href: '/sitater',
         icon: Quote,
     },
     {

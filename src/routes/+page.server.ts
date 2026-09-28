@@ -1,42 +1,40 @@
+import { callOperation } from '@/server/action'
+import { eventOperations } from '@/services/events/operations'
 import { omegaquoteOperations } from '@/services/omegaquotes/operations'
-import { omegaQuotePageSize } from '@/services/omegaquotes/constants'
-import { callOperation, makeFormAction, unwrapActionReturn } from '@/server/action'
-import type { Actions, PageServerLoad } from './$types'
+import { prisma } from '@/server/prisma'
+import type { PageServerLoad } from './$types'
 
 /**
- * Compare with projectNext's src/app/omegaquotes/page.tsx. Same three steps - read the session,
- * decide what the visitor may do, fetch page 0 server-side - except the fetch goes through
- * callOperation instead of an imported server action, and the result is returned as data rather
- * than rendered here.
+ * The landing page reads through the same ported operations every other page uses, rather than
+ * querying directly - so what it shows is subject to the same authorizers. The counts are the one
+ * exception: they are aggregate numbers with no per-row authorization to apply, so they come
+ * straight from prisma.
+ *
+ * No `title`: the header shows just "svele" here, since the page is already the site's front.
  */
 export const load: PageServerLoad = async ({ locals }) => {
-    const quotes = unwrapActionReturn(await callOperation(omegaquoteOperations.readPage, {
-        params: {
-            paging: {
-                page: {
-                    pageSize: omegaQuotePageSize,
-                    page: 0,
-                    cursor: null,
-                },
-                details: undefined,
+    const [events, quotes, counts] = await Promise.all([
+        callOperation(eventOperations.readManyCurrent, { params: { tags: null } }, locals),
+        callOperation(omegaquoteOperations.readPage, {
+            params: {
+                paging: { page: { pageSize: 3, page: 0, cursor: null }, details: undefined },
             },
-        },
-    }, locals))
+        }, locals),
+        Promise.all([
+            prisma.user.count({ where: { archived: false } }),
+            prisma.omegaQuote.count(),
+            prisma.event.count(),
+        ]),
+    ])
+
+    const [userCount, quoteCount, eventCount] = counts
 
     return {
-        quotes,
-        pageSize: omegaQuotePageSize,
-        // With no login everyone may post. This is the line that becomes an authorizer check once
-        // there is a session - see src/lib/services/omegaquotes/auth.ts.
-        canCreate: true,
+        // A refusal is an empty section, not a failed page - an anonymous visitor lacking
+        // OMEGAQUOTES_READ should still get a landing page.
+        events: events.success ? events.data.slice(0, 3) : [],
+        quotes: quotes.success ? quotes.data : [],
+        counts: { users: userCount, quotes: quoteCount, events: eventCount },
+        signedIn: Boolean(locals.session.user),
     }
 }
-
-/**
- * The form action. This is the piece that replaces `createQuoteAction` from actions.ts - note that
- * there is no actions.ts in svele at all: SvelteKit's transport layer lives in the route file, so
- * the service folder has no transport file of its own.
- */
-export const actions = {
-    create: makeFormAction(omegaquoteOperations.create),
-} satisfies Actions

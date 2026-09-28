@@ -27,6 +27,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         own: own.success ? own.data : null,
         canRegister: Boolean(locals.session.user),
         canAdmin: locals.session.permissions.includes('EVENT_ADMIN'),
+        title: event.name,
     }
 }
 

@@ -13,5 +13,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         // rather than re-derived in the component.
         canEdit: locals.session.user?.username === params.username
             || locals.session.permissions.includes('USERS_UPDATE'),
+        title: `${user.firstname} ${user.lastname}`,
     }
 }

@@ -1,7 +1,10 @@
 <script lang="ts">
     import { LogIn } from 'lucide-svelte'
 
-    let { user }: { user: { username: string, firstname: string } | null } = $props()
+    let { user, title }: {
+        user: { username: string, firstname: string } | null,
+        title: string | null,
+    } = $props()
 </script>
 
 <!--
@@ -25,9 +28,22 @@
             </a>
         </div>
 
-        <span class="ml-2 text-3xl font-medium">svele</span>
+        <a href="/" class="ml-2 text-3xl font-medium text-(--text) no-underline">svele</a>
 
-        <div class="ml-auto flex h-full items-center gap-2 rounded-2xl bg-(--surface-base) px-3">
+        <!--
+            projectNext renders an empty placeholder here when there is no title, because its title
+            is client state and the server never has one. svele's comes from the page's load, so
+            the element is simply absent server-side and client-side alike when unset - nothing to
+            reserve space for, and nothing to shift.
+        -->
+        {#if title}
+            <span aria-hidden="true" class="hidden text-2xl text-(--text-secondary) opacity-40 sm:inline">/</span>
+            <h1 class="hidden truncate text-xl font-medium text-(--text-secondary) sm:block">
+                {title}
+            </h1>
+        {/if}
+
+        <div class="ml-auto flex h-full shrink-0 items-center gap-2 rounded-2xl bg-(--surface-base) px-3">
             {#if user}
                 <a
                     href="/users/{user.username}"
