@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/state'
-    import ChevronLeft from 'lucide-svelte/icons/chevron-left'
-    import ChevronRight from 'lucide-svelte/icons/chevron-right'
+    import PanelLeftClose from 'lucide-svelte/icons/panel-left-close'
+    import PanelLeftOpen from 'lucide-svelte/icons/panel-left-open'
     import { navItems } from './nav/navDef'
 
     let expanded = $state(false)
@@ -15,7 +15,7 @@
       $rounding: 1rem   -> rounded-2xl
       $rounding - $gap  -> rounded-lg (0.5rem)
       $gap * 6 = 3rem   -> h-12   (nav item)
-      $gap * 5 = 2.5rem -> h-10   (toggle)
+      $gap * 5 = 2.5rem -> h-12   (toggle: matched to a nav row, see below)
       $gap * 2 = 1rem   -> size-4 (icon)
       $nav-height: 64px -> w-16   (collapsed)
       expanded          -> w-[220px]
@@ -45,45 +45,61 @@
     class:w-16={!expanded}
     class:w-[220px]={expanded}
 >
-    <nav
-        class="flex min-h-0 w-[220px] flex-1 flex-col items-stretch gap-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-(--surface-base) p-2"
-        aria-label="Desktop navigation"
-    >
-        {#each navItems as item (item.href)}
-            {@const Icon = item.icon}
-            {@const active = page.url.pathname === item.href}
-            <a
-                href={item.href}
-                aria-label={item.name}
-                aria-current={active ? 'page' : undefined}
-                title={expanded ? undefined : item.name}
-                class="flex h-12 shrink-0 items-center rounded-lg px-3 text-(--text) no-underline transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink) aria-[current=page]:bg-(--surface-sunken)"
-            >
-                <Icon class="ml-1 size-4 shrink-0" />
-                <span
-                    class="ml-2 overflow-hidden whitespace-nowrap transition-opacity duration-300 ease-out"
-                    class:opacity-0={!expanded}
+    <!--
+        One island holding both the links and the toggle, so the sidebar reads as a single panel
+        rather than a panel with a detached control under it. The island is pinned to the expanded
+        width and clipped by the aside, which is what lets the width animate without relaying out
+        anything inside it.
+    -->
+    <div class="flex min-h-0 w-[220px] flex-1 flex-col gap-1 rounded-2xl bg-(--surface-base) p-2">
+        <nav
+            class="flex min-h-0 flex-1 flex-col items-stretch gap-1 overflow-x-hidden overflow-y-auto"
+            aria-label="Desktop navigation"
+        >
+            {#each navItems as item (item.href)}
+                {@const Icon = item.icon}
+                {@const active = page.url.pathname === item.href}
+                <a
+                    href={item.href}
+                    aria-label={item.name}
+                    aria-current={active ? 'page' : undefined}
+                    title={expanded ? undefined : item.name}
+                    class="flex h-12 shrink-0 items-center rounded-lg px-3 text-(--text) no-underline transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink) aria-[current=page]:bg-(--surface-sunken)"
                 >
-                    {item.name}
-                </span>
-            </a>
-        {/each}
-    </nav>
+                    <Icon class="ml-1 size-4 shrink-0" />
+                    <span
+                        class="ml-2 overflow-hidden whitespace-nowrap transition-opacity duration-300 ease-out"
+                        class:opacity-0={!expanded}
+                    >
+                        {item.name}
+                    </span>
+                </a>
+            {/each}
+        </nav>
 
-    <button
-        type="button"
-        onclick={() => (expanded = !expanded)}
-        aria-expanded={expanded}
-        aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
-        class="flex h-10 w-[220px] shrink-0 items-center rounded-2xl bg-(--surface-base) text-(--text) transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink)"
-    >
-        <!-- Pinned to the collapsed width's centre so the glyph does not slide while widening. -->
-        <span class="flex w-16 shrink-0 justify-center">
+        <!--
+            Same geometry as a nav row - h-12, px-3, icon at ml-1 - so the toggle's glyph sits on
+            the same vertical line as every nav icon whether the sidebar is open or shut. The
+            border is what keeps it reading as a control rather than a fifth destination.
+        -->
+        <button
+            type="button"
+            onclick={() => (expanded = !expanded)}
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
+            class="mt-1 flex h-12 shrink-0 items-center rounded-lg border-t border-(--border) px-3 text-(--text-secondary) transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink)"
+        >
             {#if expanded}
-                <ChevronLeft class="size-4" />
+                <PanelLeftClose class="ml-1 size-4 shrink-0" />
             {:else}
-                <ChevronRight class="size-4" />
+                <PanelLeftOpen class="ml-1 size-4 shrink-0" />
             {/if}
-        </span>
-    </button>
+            <span
+                class="ml-2 overflow-hidden whitespace-nowrap transition-opacity duration-300 ease-out"
+                class:opacity-0={!expanded}
+            >
+                Skjul meny
+            </span>
+        </button>
+    </div>
 </aside>
