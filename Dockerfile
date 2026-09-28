@@ -30,5 +30,14 @@ FROM base AS prod
 ENV NODE_ENV=production
 
 COPY src src
+# prisma/ in full, not just the schema the base stage needed: start:prod runs db push and the
+# bootstrap script from here.
+COPY prisma prisma
 RUN npm run build
-CMD ["npm", "run", "start"]
+
+# Sync the schema, ensure the app is usable (default permissions, groups, optionally an admin),
+# then serve. `prisma db push` refuses rather than destroys when a change would lose data.
+#
+# This assumes a single replica: two containers starting at once would both push. Fine for one
+# instance, worth moving to a release step if svele is ever scaled out.
+CMD ["npm", "run", "start:prod"]

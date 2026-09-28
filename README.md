@@ -417,3 +417,77 @@ constraint React hits, made explicit rather than papered over with a placeholder
 
 Omega Quotes moved to `/sitater` to free `/` for a landing page, which reads through the same
 ported operations every other page uses — so what it shows is subject to the same authorizers.
+
+## Deploying with Dokploy
+
+Two shapes work. Prefer the first unless you want Dokploy to own the database too.
+
+### Application + Dokploy Postgres (recommended)
+
+Dokploy manages the database as its own service, with its own backups and credentials, and builds
+the app from this Dockerfile.
+
+1. **Create a Postgres service.** Note the internal connection string Dokploy shows — it resolves
+   on Dokploy's network, so the app reaches it without exposing a port publicly.
+2. **Create an Application**, pointed at this repo.
+   - Build type: **Dockerfile**
+   - Dockerfile path: `Dockerfile`
+   - **Build stage: `prod`** — without this it builds the `dev` target, which bind-mounts source
+     it will not have and runs Vite instead of the built server.
+3. **Set the environment** (below).
+4. **Set the container port to match `PORT`**, and add the domain. Dokploy handles TLS via Traefik.
+5. **Health check path: `/health`.** It touches the database, so an instance that cannot reach
+   Postgres reports unhealthy rather than serving an error page on every route.
+
+### Compose
+
+Point Dokploy at `docker-compose.prod.yml` instead, which brings its own Postgres with a named
+volume. The same variables apply; `DB_NAME`, `DB_USERNAME` and `DB_PASSWORD` are then also needed,
+since this file creates the database rather than consuming someone else's.
+
+### Environment
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `DB_URI` | yes | `postgresql://user:pass@host:5432/db` |
+| `PASSWORD_ENCRYPTION_KEY` | yes | Encrypts password hashes at rest. `openssl rand -base64 32`. **Changing it invalidates every existing password** — generate once, keep it. |
+| `ORIGIN` | yes | The public URL, scheme included: `https://svele.example.com` |
+| `PORT` | no | Defaults to 3000. Must match the port Dokploy exposes. |
+| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | first deploy | Creates the first administrator. Ignored once that user exists. |
+| `LOG_LEVEL` | no | `info` by default |
+
+**`ORIGIN` is the one that will catch you.** adapter-node derives the request origin from it, and
+without it every form action — login included — fails its CSRF check with a bare 403 and no
+explanation. The dev server does not enforce this, so it appears only once deployed.
+
+### What a deploy does
+
+The prod image's command is `prisma db push && npm run bootstrap && node build`:
+
+1. **`prisma db push`** brings the database up to the schema. It refuses rather than destroys when
+   a change would lose data.
+2. **`npm run bootstrap`** makes the app usable. This matters more than it sounds: a deployed svele
+   against an empty database is not merely empty but unusable — with no `DefaultPermission` rows an
+   anonymous visitor cannot read even the public pages, and with no user there is no way to log in
+   and fix it. The script creates the default permissions, the two groups, and — if the `ADMIN_*`
+   variables are set and no such user exists — one administrator. It is idempotent and **never
+   resets an existing user's password**, so it is safe on every deploy.
+3. **`node build`** serves.
+
+Verified against a genuinely empty database: schema pushed, permissions and groups and admin
+created, anonymous visitors able to read `/`, `/events` and `/sitater` while `/users` returns 401,
+and the bootstrapped administrator able to log in. Redeploying with a *different* `ADMIN_PASSWORD`
+left the original password working and created no duplicate rows.
+
+### Caveats worth knowing before you rely on it
+
+- **`db push`, not migrations.** svele has no migration history — the schema is applied by
+  diffing. That is fine for an experiment and wrong for anything whose data you would miss. Moving
+  to `prisma migrate` means generating an initial migration against the deployed schema first.
+- **Single replica.** `db push` runs on container start, so two instances starting at once would
+  both push. Scale out and this belongs in a release step instead.
+- **The image is large** — 1.19GB, of which ~460MB is `node_modules`, because the Prisma CLI ships with it so the
+  start command can push the schema. Dropping `db push` from startup is what would let it be
+  pruned.
+- **Seed data is not deployed.** `prisma/seed.ts` is development only; the bootstrap script is the
+  production path and deliberately creates nothing but permissions, groups and one account.

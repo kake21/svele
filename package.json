@@ -8,6 +8,8 @@
         "build": "vite build",
         "preview": "vite preview",
         "start": "node build",
+        "start:prod": "prisma db push && npm run bootstrap && node build",
+        "bootstrap": "tsx prisma/bootstrap.ts",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "db:push": "prisma db push",
         "db:seed": "tsx prisma/seed.ts",

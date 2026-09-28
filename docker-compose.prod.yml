@@ -1,0 +1,62 @@
+# Production stack.
+#
+# Two uses:
+#   - Dokploy "Compose" deployment: point it at this file and set the variables below.
+#   - Locally, to run the real production image against a real database before deploying:
+#       docker compose -f docker-compose.prod.yml up --build
+#
+# For a Dokploy "Application" deployment you do not need this file at all - Dokploy builds the
+# Dockerfile directly and provides Postgres as its own service. See the README.
+services:
+    svele:
+        build:
+            context: .
+            target: prod
+        environment:
+            DB_URI: ${DB_URI}
+            # Encrypts password hashes at rest. Changing it invalidates every existing password,
+            # so generate it once and keep it: openssl rand -base64 32
+            PASSWORD_ENCRYPTION_KEY: ${PASSWORD_ENCRYPTION_KEY:?set PASSWORD_ENCRYPTION_KEY}
+            # adapter-node derives the request origin from this. Without it every form action -
+            # login included - fails its CSRF check with a bare 403. Must be the public URL,
+            # scheme and all.
+            ORIGIN: ${ORIGIN:?set ORIGIN, e.g. https://svele.example.com}
+            PORT: ${PORT:-3000}
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+            # Only read on a database with no such user; never resets an existing password.
+            ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+            ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+            ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+        ports:
+            - ${PORT:-3000}:${PORT:-3000}
+        healthcheck:
+            # Touches the database, so an instance that cannot reach Postgres reports unhealthy
+            # rather than serving an error page on every route.
+            test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3000}/health || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 6
+            start_period: 40s
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+
+    db:
+        image: postgres:16.0-alpine
+        environment:
+            POSTGRES_DB: ${DB_NAME:?set DB_NAME}
+            POSTGRES_USER: ${DB_USERNAME:?set DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        restart: unless-stopped
+        volumes:
+            - proddb:/var/lib/postgresql/data
+
+volumes:
+    proddb:
+        driver: local
