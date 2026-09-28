@@ -30,8 +30,9 @@
        work is one element and the layout never needs to know why.
 
     2. projectNext animates `max-width` on every label, so an N-item sidebar runs N layout-driven
-       transitions per toggle. Here the labels have static layout and are clipped by the aside's
-       overflow-hidden; only `opacity` animates, which the compositor handles without layout.
+       transitions per toggle. Here only the aside's width is animated and the rows inherit it, so
+       it is one transition whatever the item count; the labels animate `opacity` alone, which the
+       compositor handles without touching layout.
 
     3. projectNext wraps each collapsed item in a NavTooltip component. The accessible name is
        already on the link, so a plain `title` covers the pointer affordance with no extra
@@ -47,11 +48,18 @@
 >
     <!--
         One island holding both the links and the toggle, so the sidebar reads as a single panel
-        rather than a panel with a detached control under it. The island is pinned to the expanded
-        width and clipped by the aside, which is what lets the width animate without relaying out
-        anything inside it.
+        rather than a panel with a detached control under it.
+
+        The island tracks the aside's width rather than being pinned to the expanded 220px. Pinning
+        it was cheaper - nothing inside relaid out, because the overflow simply got clipped - but it
+        clipped the rows mid-shape: a row is 220px of rounded rectangle with only its left 64px
+        visible, so its right-hand corners were sliced flat. Invisible until a row was hovered and
+        the accent fill made the cut edge obvious.
+
+        Rows now end where the sidebar ends, so their corners round correctly in both states. The
+        labels are clipped by each row's own overflow-hidden instead of by the aside.
     -->
-    <div class="flex min-h-0 w-[220px] flex-1 flex-col gap-1 rounded-2xl bg-(--surface-base) p-2">
+    <div class="flex min-h-0 w-full flex-1 flex-col gap-1 rounded-2xl bg-(--surface-base) p-2">
         <nav
             class="flex min-h-0 flex-1 flex-col items-stretch gap-1 overflow-x-hidden overflow-y-auto"
             aria-label="Desktop navigation"
@@ -64,7 +72,7 @@
                     aria-label={item.name}
                     aria-current={active ? 'page' : undefined}
                     title={expanded ? undefined : item.name}
-                    class="flex h-12 shrink-0 items-center rounded-lg px-3 text-(--text) no-underline transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink) aria-[current=page]:bg-(--surface-sunken)"
+                    class="flex h-12 shrink-0 items-center overflow-hidden rounded-lg px-3 text-(--text) no-underline transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink) aria-[current=page]:bg-(--surface-sunken)"
                 >
                     <Icon class="ml-1 size-4 shrink-0" />
                     <span
@@ -80,14 +88,14 @@
         <!--
             Same geometry as a nav row - h-12, px-3, icon at ml-1 - so the toggle's glyph sits on
             the same vertical line as every nav icon whether the sidebar is open or shut. The
-            border is what keeps it reading as a control rather than a fifth destination.
+            accent colour is what keeps it reading as a control rather than a fifth destination.
         -->
         <button
             type="button"
             onclick={() => (expanded = !expanded)}
             aria-expanded={expanded}
             aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
-            class="mt-1 flex h-12 shrink-0 items-center rounded-lg border-t border-(--border) px-3 text-(--text-secondary) transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink)"
+            class="mt-1 flex h-12 shrink-0 items-center overflow-hidden rounded-lg border-(--border) px-3 text-(--accent-blue) transition-colors duration-300 ease-out hover:bg-(--accent-blue) hover:text-(--accent-blue-ink)"
         >
             {#if expanded}
                 <PanelLeftClose class="ml-1 size-4 shrink-0" />
