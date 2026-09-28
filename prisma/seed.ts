@@ -173,38 +173,46 @@ async function seedEvents() {
 
     const hour = 60 * 60 * 1000
     const day = 24 * hour
-    const nowMs = Date.now()
+
+    // Anchored to a clock time rather than "now", so the rendered registration window reads like
+    // a real one instead of showing whatever hour the seed happened to run at.
+    function at(daysFromNow: number, hours: number): Date {
+        const date = new Date()
+        date.setDate(date.getDate() + daysFromNow)
+        date.setHours(hours, 0, 0, 0)
+        return date
+    }
 
     const eventData = [
         {
             name: 'Kickoff for høstsemesteret',
             location: 'Storsalen',
             descriptionMd: 'Vi sparker i gang semesteret med mat, quiz og altfor høy musikk.',
-            start: nowMs + 3 * day, hours: 4, places: 3, waitingList: true, tag: 1,
+            start: at(3, 19), hours: 4, places: 3, waitingList: true, tag: 1,
         },
         {
             name: 'Bedriftspresentasjon med Bekk',
             location: 'A2-104',
             descriptionMd: 'Bekk kommer innom for å fortelle om hva de driver med.',
-            start: nowMs + 9 * day, hours: 2, places: 60, waitingList: true, tag: 0,
+            start: at(9, 17), hours: 2, places: 60, waitingList: true, tag: 0,
         },
         {
             name: 'Introduksjon til SvelteKit',
             location: 'Kjelleren',
             descriptionMd: 'Et kurs om hvordan en porterer en Next-app uten å miste tjenestelaget.',
-            start: nowMs + 16 * day, hours: 3, places: 25, waitingList: false, tag: 2,
+            start: at(16, 12), hours: 3, places: 25, waitingList: false, tag: 2,
         },
         {
             name: 'Juleball',
             location: 'Rådhuset',
             descriptionMd: 'Årets høydepunkt. Dresskode: mørk dress.',
-            start: nowMs - 40 * day, hours: 6, places: 120, waitingList: true, tag: 1,
+            start: at(-40, 20), hours: 6, places: 120, waitingList: true, tag: 1,
         },
         {
             name: 'Workshop: Prisma i praksis',
             location: 'A1-101',
             descriptionMd: 'Vi gikk gjennom relasjoner, migreringer og hvorfor engines er vanskelig på NixOS.',
-            start: nowMs - 12 * day, hours: 2, places: 30, waitingList: false, tag: 2,
+            start: at(-12, 10), hours: 2, places: 30, waitingList: false, tag: 2,
         },
     ]
 
@@ -214,14 +222,14 @@ async function seedEvents() {
                 name: item.name,
                 location: item.location,
                 descriptionMd: item.descriptionMd,
-                eventStart: new Date(item.start),
-                eventEnd: new Date(item.start + item.hours * hour),
+                eventStart: item.start,
+                eventEnd: new Date(item.start.getTime() + item.hours * hour),
                 canBeViewdBy: 'ALL',
                 takesRegistration: true,
                 places: item.places,
                 waitingList: item.waitingList,
-                registrationStart: new Date(nowMs - day),
-                registrationEnd: new Date(item.start),
+                registrationStart: new Date(item.start.getTime() - 14 * day),
+                registrationEnd: new Date(item.start.getTime() - 2 * hour),
                 createdById: seededUsers[0].id,
                 eventTagEvents: { create: [{ tagId: tags[item.tag].id }] },
             },

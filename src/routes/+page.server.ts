@@ -1,40 +1,56 @@
 import { callOperation } from '@/server/action'
 import { eventOperations } from '@/services/events/operations'
 import { omegaquoteOperations } from '@/services/omegaquotes/operations'
-import { prisma } from '@/server/prisma'
+import { userOperations } from '@/services/users/operations'
 import type { PageServerLoad } from './$types'
 
+const ROWS = 3
+
 /**
- * The landing page reads through the same ported operations every other page uses, rather than
- * querying directly - so what it shows is subject to the same authorizers. The counts are the one
- * exception: they are aggregate numbers with no per-row authorization to apply, so they come
- * straight from prisma.
- *
- * No `title`: the header shows just "svele" here, since the page is already the site's front.
+ * Every section reads through the ported operations, so each is subject to its own authorizer -
+ * which is what makes the empty states meaningful rather than decorative. A visitor without
+ * USERS_READ gets an empty Brukere island, not an error page, exactly as projectNext leaves out
+ * the islands a member lacks the permission for.
  */
 export const load: PageServerLoad = async ({ locals }) => {
-    const [events, quotes, counts] = await Promise.all([
+    const [upcoming, archived, quotes, users] = await Promise.all([
         callOperation(eventOperations.readManyCurrent, { params: { tags: null } }, locals),
-        callOperation(omegaquoteOperations.readPage, {
+        callOperation(eventOperations.readManyArchivedPage, {
             params: {
-                paging: { page: { pageSize: 3, page: 0, cursor: null }, details: undefined },
+                paging: {
+                    page: { pageSize: ROWS, page: 0, cursor: null },
+                    details: { name: '', tags: null },
+                },
             },
         }, locals),
-        Promise.all([
-            prisma.user.count({ where: { archived: false } }),
-            prisma.omegaQuote.count(),
-            prisma.event.count(),
-        ]),
+        callOperation(omegaquoteOperations.readPage, {
+            params: {
+                paging: { page: { pageSize: ROWS, page: 0, cursor: null }, details: undefined },
+            },
+        }, locals),
+        callOperation(userOperations.readPage, {
+            params: {
+                paging: {
+                    page: { pageSize: ROWS, page: 0, cursor: null },
+                    details: {
+                        partOfName: '',
+                        groups: [],
+                        selectedGroup: null,
+                        sort: { field: 'name' as const, direction: 'asc' as const },
+                    },
+                },
+            },
+        }, locals),
     ])
 
-    const [userCount, quoteCount, eventCount] = counts
-
     return {
-        // A refusal is an empty section, not a failed page - an anonymous visitor lacking
-        // OMEGAQUOTES_READ should still get a landing page.
-        events: events.success ? events.data.slice(0, 3) : [],
+        upcoming: upcoming.success ? upcoming.data.slice(0, ROWS) : [],
+        archived: archived.success ? archived.data : [],
         quotes: quotes.success ? quotes.data : [],
-        counts: { users: userCount, quotes: quoteCount, events: eventCount },
+        users: users.success ? users.data : [],
+        // Told apart so the empty state can say why it is empty.
+        canReadUsers: users.success,
+        canReadQuotes: quotes.success,
         signedIn: Boolean(locals.session.user),
     }
 }

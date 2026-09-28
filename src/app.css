@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 
 /*
+ * projectNext pairs a sans for UI with Playfair Display for section headings and quotes
+ * ($fonts-secondary in its SCSS). svele keeps the same pairing so the ported cards read the same.
+ */
+@theme {
+    --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+/*
  * Design tokens.
  *
  * Referenced from components as Tailwind v4's arbitrary-property shorthand -
@@ -11,6 +19,9 @@
     --bg: #f1f3f6;
     --surface-base: #ffffff;
     --surface-sunken: #e8ebf0;
+    /* A row sitting on top of a card. projectNext calls these surface-raised / surface-hover. */
+    --surface-raised: #f3f5f9;
+    --surface-hover: #e7ecf3;
     --border: #e2e6ec;
     --text: #171a1f;
     --text-secondary: #6b7280;
@@ -24,6 +35,8 @@
         --bg: #0e1013;
         --surface-base: #181b21;
         --surface-sunken: #12151a;
+        --surface-raised: #1f242c;
+        --surface-hover: #272d37;
         --border: #272b33;
         --text: #e9ebee;
         --text-secondary: #969ca6;
@@ -46,7 +59,9 @@
  * the full document height and change angle with content length. Putting it on the canvas with
  * background-attachment: fixed keeps it viewport-sized however long the page gets.
  *
- * svele has no --surface-raised; --bg is the same role (the surface behind the cards).
+ * projectNext layers this over $colors-surface-raised; here that role is --bg. (The
+ * --surface-raised token above is a different thing - the surface of a row sitting on a card -
+ * and keeps projectNext's name for it because the ported card styles refer to it that way.)
  */
 html {
     background:
