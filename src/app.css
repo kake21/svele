@@ -30,19 +30,57 @@
     --danger: #b91c1c;
 }
 
+/*
+ * Dark mode is projectNext's StjerneInnbygger theme, taken verbatim from
+ * src/app/users/[username]/(user-admin)/theme/theme.ts.
+ *
+ * Mapping projectNext's tokens onto svele's needs one thing said out loud, because it inverts what
+ * svele had: in projectNext the page is NOT the darkest surface. layout.module.scss lays the page
+ * gradient over $surface-raised, while a card island is $surface-base - which is darker. So cards
+ * sit below the page rather than above it, and anything resting on a card comes back up to
+ * surface-raised.
+ *
+ * That is also why --surface-sunken and --surface-raised share a value here rather than by
+ * accident: both mean "resting on a card", and projectNext's own TextInput uses $surface-raised
+ * with $surface-hover on focus, exactly as its list rows do.
+ */
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #0e1013;
-        --surface-base: #181b21;
-        --surface-sunken: #12151a;
-        --surface-raised: #1f242c;
-        --surface-hover: #272d37;
-        --border: #272b33;
-        --text: #e9ebee;
-        --text-secondary: #969ca6;
-        --accent-blue: #4d8dff;
-        --accent-blue-ink: #0e1013;
-        --danger: #f87171;
+        /* $surface-raised - the base the page gradient is laid over */
+        --bg: hsl(202, 50%, 13%);
+        /* $surface-base - a card island */
+        --surface-base: hsl(202, 64%, 8%);
+        /* $surface-raised - rows and inputs resting on a card */
+        --surface-sunken: hsl(202, 50%, 13%);
+        --surface-raised: hsl(202, 50%, 13%);
+        --surface-hover: hsl(205, 40%, 20%);
+        /* $surface-subtle - borders and the progress-bar track */
+        --border: hsl(205, 30%, 35%);
+
+        --text: hsl(0, 0%, 80%);
+        /* $text-muted */
+        --text-secondary: hsl(0, 0%, 70%);
+        /* $text-inv - text on an accent fill */
+        --accent-blue-ink: hsl(0, 0%, 10%);
+
+        /*
+         * The full accent set. Only blue (primary) and red (error, via --danger) have callers
+         * today; the rest are carried so this is the theme rather than the subset svele happens
+         * to use, and so a status colour already exists when one is wanted.
+         */
+        --accent-red: hsl(0, 80%, 60%);
+        --accent-orange: hsl(40, 80%, 60%);
+        --accent-yellow: hsl(60, 80%, 60%);
+        --accent-green: hsl(120, 80%, 60%);
+        --accent-cyan: hsl(180, 80%, 60%);
+        --accent-blue: hsl(207, 91%, 65%);
+        --accent-magenta: hsl(300, 80%, 60%);
+        --accent-violet: hsl(260, 80%, 60%);
+
+        --danger: var(--accent-red);
+
+        /* $layer - the translucent wash projectNext lays over raised surfaces */
+        --layer: hsla(211, 48.1%, 35.5%, 0.18);
     }
 }
 
